@@ -1,0 +1,6 @@
+# 沿用项目的 Chroma、LangChain、DashScope 等依赖。
+jieba==0.42.1
+onnxruntime==1.31.1
+tokenizers==0.23.3
+huggingface-hub==2.4.0
+numpy==2.5.4

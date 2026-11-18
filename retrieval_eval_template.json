@@ -1,0 +1,12 @@
+{
+  "dataset_name": "填写论文与评测集名称",
+  "annotation_status": "draft",
+  "collection_name": "paper_chunks",
+  "questions": [
+    {
+      "id": "q001",
+      "question": "填写根据论文构建的问题",
+      "relevant_ids": ["填写导出知识库中的实际 Chunk ID"]
+    }
+  ]
+}

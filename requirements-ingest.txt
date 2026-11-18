@@ -1,0 +1,12 @@
+# 新增 PDF 解析依赖。LangChain、Chroma、DashScope、OpenAI 等沿用项目环境。
+pymupdf==2.1
+# 本地 OCR，识别权重随 RapidOCR wheel 安装，使用 CPU ONNX Runtime。
+rapidocr==3.10.0
+onnxruntime==1.31.1
+opencv-python-headless==5.0.0.93
+Pillow==13.0.0
+pyclipper==1.4.0
+Shapely==2.2.0
+six==1.17.0
+omegaconf==2.4.0
+colorlog==6.12.0

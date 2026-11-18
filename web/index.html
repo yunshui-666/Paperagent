@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PaperAgent · 论文研读工作台</title>
+    <link rel="stylesheet" href="/assets/style.css" />
+    <script defer src="/assets/app.js"></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="PaperAgent 首页"
+        ><span class="brand-mark">P</span
+        ><span>PaperAgent<small>论文研读工作台</small></span></a
+      >
+      <button id="new-chat" class="button new-chat">＋ 新建对话</button>
+      <div class="sidebar-heading">研读记录</div>
+      <nav id="sessions" aria-label="会话列表"></nav>
+      <div class="sidebar-footer">
+        <button id="open-library" class="nav-button">
+          ▤ 文档库 <span id="document-count">0</span></button
+        ><a href="/guide" target="_blank" rel="noopener">技术文档 ↗</a
+        ><a href="/docs" target="_blank" rel="noopener">API 调试 ↗</a>
+        <div class="service-state">
+          <span id="status-dot"></span
+          ><span id="service-status">连接服务中</span>
+        </div>
+      </div>
+    </aside>
+    <main class="workspace">
+      <header class="topbar">
+        <div class="context-controls">
+          <label class="sr-only" for="collection">知识库</label
+          ><select id="collection" aria-label="知识库"></select
+          ><button id="scope-button" class="quiet-button">全部论文</button>
+        </div>
+        <button id="settings-button" class="quiet-button">检索设置</button>
+      </header>
+      <section
+        id="messages"
+        class="messages"
+        aria-label="对话内容"
+        aria-live="polite"
+      ></section>
+      <div class="composer-area">
+        <form id="chat-form" class="composer">
+          <label for="question" class="sr-only">向论文提问</label
+          ><textarea
+            id="question"
+            rows="1"
+            placeholder="向论文提问，或继续追问上一条回答…"
+            maxlength="3000"
+          ></textarea>
+          <div class="composer-bottom">
+            <span id="composer-hint">回答附带可回查的论文证据</span
+            ><button
+              id="send"
+              class="send-button"
+              type="submit"
+              aria-label="发送问题"
+            >
+              发送 ↑
+            </button>
+          </div>
+        </form>
+        <div class="composer-note">Enter 发送 · Shift + Enter 换行</div>
+      </div>
+    </main>
+    <aside id="evidence" class="evidence hidden" aria-label="引用证据">
+      <div class="panel-heading">
+        <h2>引用证据</h2>
+        <button id="close-evidence" class="icon-button" aria-label="关闭证据">
+          ×
+        </button>
+      </div>
+      <h3 id="evidence-title"></h3>
+      <p id="evidence-meta" class="muted"></p>
+      <a id="pdf-link" class="button" target="_blank" rel="noopener"
+        >查看 PDF</a
+      >
+      <div id="evidence-text" class="evidence-text"></div>
+      <details>
+        <summary>检索分数</summary>
+        <dl id="evidence-scores"></dl>
+      </details>
+    </aside>
+    <dialog id="library-dialog" class="library-dialog">
+      <div class="dialog-header">
+        <div>
+          <h2>文档库</h2>
+          <p class="muted">上传论文，完成入库后即可研读。</p>
+        </div>
+        <button
+          class="icon-button"
+          data-close="library-dialog"
+          aria-label="关闭文档库"
+        >
+          ×
+        </button>
+      </div>
+      <form id="upload-form">
+        <label id="dropzone" class="dropzone"
+          ><input
+            id="pdf-files"
+            type="file"
+            accept=".pdf,application/pdf"
+            multiple
+          /><strong>选择 PDF 或拖放到这里</strong
+          ><span id="file-hint">支持批量上传 · 单文件 50 MiB</span></label
+        >
+        <div class="upload-options">
+          <label
+            >解析方式
+            <select id="upload-scheme">
+              <option value="3">本地 OCR + VLM 双路</option>
+              <option value="1">本地文本解析</option>
+              <option value="2">本地 OCR</option>
+            </select></label
+          ><button id="upload-button" class="button primary" type="submit">
+            上传并入库
+          </button>
+        </div>
+        <div id="upload-result" class="upload-result" aria-live="polite"></div>
+      </form>
+      <div class="section-heading">
+        <h3>已上传文档</h3>
+        <button id="refresh-documents" class="quiet-button">刷新</button>
+      </div>
+      <div id="document-list"></div>
+    </dialog>
+    <dialog id="settings-dialog">
+      <div class="dialog-header">
+        <h2>检索设置</h2>
+        <button
+          class="icon-button"
+          data-close="settings-dialog"
+          aria-label="关闭设置"
+        >
+          ×
+        </button>
+      </div>
+      <form id="settings-form" class="settings-form">
+        <label
+          >检索模式<select name="mode">
+            <option value="hybrid_rerank">混合召回 + Cross-Encoder</option>
+            <option value="hybrid">混合召回 · RRF</option>
+            <option value="dense">向量相似度</option>
+            <option value="bm25">关键词 · BM25</option>
+          </select></label
+        >
+        <div class="number-fields">
+          <label
+            >向量候选数<input
+              name="dense_k"
+              type="number"
+              min="1"
+              value="20"
+              required /></label
+          ><label
+            >关键词候选数<input
+              name="keyword_k"
+              type="number"
+              min="1"
+              value="20"
+              required /></label
+          ><label
+            >最终证据数<input
+              name="top_k"
+              type="number"
+              min="1"
+              value="10"
+              required
+          /></label>
+        </div>
+        <label class="checkbox-label"
+          ><input
+            name="rewrite_query"
+            type="checkbox"
+            checked
+          />结合历史改写追问，用于检索</label
+        >
+        <p class="muted">混合重排模式下，最高相关性低于 0.5 时切换联网搜索，回答依据为本轮网页摘要。配置保存到新会话。</p>
+        <button class="button primary" type="submit">应用到新会话</button>
+      </form>
+    </dialog>
+    <dialog id="scope-dialog">
+      <div class="dialog-header">
+        <h2>选择研读范围</h2>
+        <button
+          class="icon-button"
+          data-close="scope-dialog"
+          aria-label="关闭范围选择"
+        >
+          ×
+        </button>
+      </div>
+      <form id="scope-form">
+        <p class="muted">
+          选择该知识库中已完成入库的论文，留空使用全部可用内容。
+        </p>
+        <div id="scope-list"></div>
+        <button class="button primary" type="submit">开始新的范围会话</button>
+      </form>
+    </dialog>
+    <dialog id="confirm-dialog">
+      <form method="dialog">
+        <h2 id="confirm-title">确认操作</h2>
+        <p id="confirm-message"></p>
+        <div class="dialog-actions">
+          <button class="button" value="cancel">取消</button
+          ><button id="confirm-submit" class="button danger" value="confirm">
+            确认
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="rename-dialog">
+      <form id="rename-form">
+        <h2>重命名会话</h2>
+        <input
+          id="session-title"
+          maxlength="120"
+          required
+          aria-label="会话名称"
+        />
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close="rename-dialog">
+            取消</button
+          ><button class="button primary" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" class="toast hidden" role="status"></div>
+  </body>
+</html>
