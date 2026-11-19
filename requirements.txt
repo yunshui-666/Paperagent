@@ -14,3 +14,4 @@ openai==3.49.0
 python-dotenv==1.2.4
 markdown-it-py==4.3.0
 requests==2.34.2
+protobuf==7.36.2

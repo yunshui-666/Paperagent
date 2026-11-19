@@ -6,3 +6,4 @@ __pycache__/
 pdfprocess/data/
 experiments/results/
 *.log
+docker-data/

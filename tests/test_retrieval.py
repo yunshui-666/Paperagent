@@ -18,7 +18,7 @@ from pdfprocess import rag
 from pdfprocess.compare_retrieval import (
     evaluate_retrieval, improvement, ranking_metrics, validate_dataset, main as evaluation_main
 )
-from pdfprocess.retreiver import main as retrieval_main
+from pdfprocess.retrieval_cli import main as retrieval_main
 from pdfprocess.cross_encoder import DEFAULT_MODEL_DIR, MODEL_FILE, OnnxCrossEncoder
 from pdfprocess.retrieval import (
     BM25Index, PaperRetriever, RetrievalConfig, RetrievalHit, corpus_fingerprint,
@@ -201,8 +201,8 @@ class RetrievalTests(unittest.TestCase):
         self.assertEqual(len(state.values["messages"]), 2)
 
     def test_keyword_cli_runs_without_embedding_credentials(self):
-        with patch("pdfprocess.retreiver.Chroma", return_value=self.store):
-            with patch("pdfprocess.retreiver.load_dotenv"), patch.dict(os.environ, {}, clear=True):
+        with patch("pdfprocess.retrieval_cli.Chroma", return_value=self.store):
+            with patch("pdfprocess.retrieval_cli.load_dotenv"), patch.dict(os.environ, {}, clear=True):
                 self.assertEqual(retrieval_main(["--mode", "bm25", "--query", "attention"]), 0)
         self.assertEqual(self.store.calls, [])
 

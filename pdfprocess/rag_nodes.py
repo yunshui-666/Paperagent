@@ -13,22 +13,13 @@ import time
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.runnables import Runnable
 
-if __package__:
-    from .rag_state import RAGState
-    from .rag_prompts import prompt, rewrite_prompt
-    from .retrieval import PaperRetriever
-    from .web_search import clean_results
-    from .context_compression import (CompressionConfig, QuestionBudgetError, compress_evidence,
-                                      estimate_tokens, message_tokens, summarize_history)
-    from .tools.search_flow import LOCAL_KNOWLEDGE_NOTICE, web_answer_inputs, web_answer_prompt
-else:
-    from rag_state import RAGState
-    from rag_prompts import prompt, rewrite_prompt
-    from retrieval import PaperRetriever
-    from web_search import clean_results
-    from context_compression import (CompressionConfig, QuestionBudgetError, compress_evidence,
-                                     estimate_tokens, message_tokens, summarize_history)
-    from tools.search_flow import LOCAL_KNOWLEDGE_NOTICE, web_answer_inputs, web_answer_prompt
+from .rag_state import RAGState
+from .rag_prompts import prompt, rewrite_prompt
+from .retrieval import PaperRetriever
+from .web_search import clean_results
+from .context_compression import (CompressionConfig, QuestionBudgetError, compress_evidence,
+                                  estimate_tokens, message_tokens, summarize_history)
+from .tools.search_flow import LOCAL_KNOWLEDGE_NOTICE, web_answer_inputs, web_answer_prompt
 
 
 def prepare_history_node(state: RAGState, *, compression_config, summary_chain) -> dict:

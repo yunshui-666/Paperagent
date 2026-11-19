@@ -24,7 +24,9 @@ OCR 返回像素文字框，VLM 默认返回 0～1000 的归一化版面框，�
 | pdfprocess/pdf_pipeline2.py | 方案 2 的五个公开函数 |
 | pdfprocess/pdf_pipeline3.py | 方案 3 的五个公开函数 |
 | pdfprocess/pdf_vision.py | 文本层提取、OCR/VLM 双路调度与页级产物 |
-| pdfprocess/ingest_common.py | 配置、缓存、去重、任务锁、入库编排与批量处理 |
+| pdfprocess/ingest_config.py | 三方案共用配置和环境读取；ingest_common 继续兼容导出 PipelineConfig |
+| pdfprocess/pipelines.py | 网页与 CLI 共用方案分发 |
+| pdfprocess/ingest_common.py | 缓存、去重、任务锁、入库编排与批量处理 |
 | pdfprocess/embeddings.py | 入库和问答共用 TongyiEmbeddings |
 | pdfprocess/compare_ingest.py | 同一批文件的命令行对比与 JSON 报告 |
 | pdfprocess/paper_chunk.py | 原有标题和长度切分，可传入切块参数 |

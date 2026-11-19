@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
-from pdfprocess.ingest_common import DATA_DIR, PipelineConfig
+from pdfprocess.ingest_config import PipelineConfig
+from pdfprocess.paths import DATA_DIR
 
 
 @dataclass(frozen=True)
@@ -36,14 +37,7 @@ class ServiceSettings:
         # CHROMA_DIR 保存向量库，三个目录在用途和生命周期上分别管理。
         return cls(
             service_root=Path(os.getenv("PAPERAGENT_SERVICE_ROOT", str(DATA_DIR / "upload_service"))),
-            pipeline=PipelineConfig(
-                data_root=Path(os.getenv("PAPERAGENT_INGEST_ROOT", str(DATA_DIR / "ingestion"))),
-                chroma_dir=Path(os.getenv("PAPERAGENT_CHROMA_DIR", str(DATA_DIR / "chroma_db"))),
-                ocr_threads=int(os.getenv("PAPERAGENT_OCR_THREADS", "2")),
-                ocr_min_confidence=float(os.getenv("PAPERAGENT_OCR_MIN_CONFIDENCE", "0.5")),
-                ocr_match_threshold=float(os.getenv("PAPERAGENT_OCR_MATCH_THRESHOLD", "0.5")),
-                vlm_model=os.getenv("PAPERAGENT_VLM_MODEL", "qwen3-vl-flash")
-            ),
+            pipeline=PipelineConfig.from_environment(),
             worker_count=int(os.getenv("PAPERAGENT_UPLOAD_WORKERS", "1")),
             parse_processes=int(os.getenv("PAPERAGENT_PARSE_PROCESSES", "1")),
             max_file_bytes=int(os.getenv("PAPERAGENT_UPLOAD_MAX_MB", "50")) * 1024 * 1024,

@@ -7,7 +7,7 @@ from pathlib import Path
 import chromadb
 
 
-CHROMA_DIR = Path(__file__).resolve().parent / "data" / "chroma_db"
+from .paths import chroma_directory
 
 
 def save_chunks(chunks, embeddings, *, collection=None,
@@ -32,7 +32,7 @@ def save_chunks(chunks, embeddings, *, collection=None,
     if len(ids) != len(set(ids)):
         raise ValueError("Chunk ID 必须唯一")
     if collection is None:
-        directory = CHROMA_DIR
+        directory = chroma_directory()
         if persist_directory is not None:
             directory = Path(persist_directory).resolve()
         client = chromadb.PersistentClient(path=str(directory))

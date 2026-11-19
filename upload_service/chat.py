@@ -160,10 +160,10 @@ class ChatService:
                 for turn in self.store.turns(session["id"]):
                     if turn["status"] == "completed":
                         if turn.get("metrics", {}).get("evidence_origin") == "papers":
-                            catalog = [{"arxiv_id": item["arxiv_id"], "title": item["source"],
+                            catalog = [{"paper_id": item["paper_id"], "title": item["source"],
                                         "summary": item.get("text", ""), "url": item["url"],
-                                        "pdf_url": f"https://arxiv.org/pdf/{item['arxiv_id']}"}
-                                       for item in turn["sources"] if item.get("arxiv_id")]
+                                        "source": item.get("provider")}
+                                       for item in turn["sources"] if item.get("paper_id")]
                         messages.extend([
                             HumanMessage(content=turn["question"], id=f"{turn['id']}:human"),
                             AIMessage(content=turn["answer"], id=f"{turn['id']}:ai")

@@ -44,7 +44,7 @@ Cross-Encoder 采用 `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` 多语言模�
 | pdfprocess/retrieval.py | TopK 配置、BM25、RRF、去重与统一检索接口 |
 | pdfprocess/cross_encoder.py | 本地模型加载、成对编码、分批 ONNX 推理 |
 | pdfprocess/rag.py | 将新检索接入原有多轮 LangGraph 工作流 |
-| pdfprocess/retreiver.py | 保留原文件名，提供多种模式的命令行检索调试 |
+| pdfprocess/retrieval_cli.py | 规范检索 CLI；retreiver.py 保留为兼容入口 |
 | pdfprocess/compare_retrieval.py | 知识库导出、标注校验、召回及提升率评测 |
 | retrieval_eval_template.json | 后续论文问题与证据的填写模板 |
 | requirements-retrieval.txt | 本次检索依赖 |
@@ -64,20 +64,20 @@ Set-Location 'C:\Users\Mark\Desktop\langgraph'
 ### 原始 Top5 基线
 
 ```powershell
-.\.venv\Scripts\python.exe -m pdfprocess.retreiver --mode dense --dense-k 5 --top-k 5 --query '填写论文问题'
+.\.venv\Scripts\python.exe -m pdfprocess.retrieval_cli --mode dense --dense-k 5 --top-k 5 --query '填写论文问题'
 ```
 
 ### 增大向量召回数量
 
 ```powershell
-.\.venv\Scripts\python.exe -m pdfprocess.retreiver --mode dense --dense-k 20 --top-k 20 --query '填写论文问题'
+.\.venv\Scripts\python.exe -m pdfprocess.retrieval_cli --mode dense --dense-k 20 --top-k 20 --query '填写论文问题'
 ```
 
 ### 混合召回与重排
 
 ```powershell
-.\.venv\Scripts\python.exe -m pdfprocess.retreiver --mode hybrid --query '填写论文问题'
-.\.venv\Scripts\python.exe -m pdfprocess.retreiver --mode hybrid_rerank --query '填写论文问题'
+.\.venv\Scripts\python.exe -m pdfprocess.retrieval_cli --mode hybrid --query '填写论文问题'
+.\.venv\Scripts\python.exe -m pdfprocess.retrieval_cli --mode hybrid_rerank --query '填写论文问题'
 ```
 
 三套入库方案对应的知识库可通过 `--collection paper_chunks1`、`paper_chunks2` 或 `paper_chunks3` 选择。当前原知识库为 `paper_chunks`。

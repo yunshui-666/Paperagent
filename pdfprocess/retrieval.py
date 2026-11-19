@@ -13,10 +13,7 @@ from threading import RLock
 
 from langchain_core.documents import Document
 
-if __package__:
-    from .cross_encoder import OnnxCrossEncoder
-else:
-    from cross_encoder import OnnxCrossEncoder
+from .cross_encoder import OnnxCrossEncoder
 
 
 MODES = ("dense", "bm25", "hybrid", "hybrid_rerank")

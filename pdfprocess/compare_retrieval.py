@@ -22,8 +22,7 @@ from .retrieval import (
 )
 
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_CHROMA_DIR = Path(__file__).resolve().parent / "data" / "chroma_db"
+from .paths import PROJECT_DIR, chroma_directory
 
 
 def validate_dataset(dataset, documents, collection_name=None):
@@ -196,12 +195,12 @@ def main(argv=None):
     parser.add_argument("--dataset", type=Path)
     parser.add_argument("--export-corpus", type=Path, help="导出 Chunk ID、正文与页码，供证据标注")
     parser.add_argument("--collection", default="paper_chunks")
-    parser.add_argument("--chroma-dir", type=Path, default=DEFAULT_CHROMA_DIR)
+    parser.add_argument("--chroma-dir", type=Path)
     parser.add_argument("--model-dir", type=Path)
     parser.add_argument("--dense-k", type=int, default=20)
     parser.add_argument("--keyword-k", type=int, default=20)
     parser.add_argument("--at-k", type=int, nargs="+", default=[5, 10, 20])
-    parser.add_argument("--output", type=Path, default=DEFAULT_CHROMA_DIR.parent / "retrieval_comparison.json")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     if args.dataset is None and args.export_corpus is None:
         parser.error("请提供 --dataset 或 --export-corpus")
@@ -209,6 +208,8 @@ def main(argv=None):
         config = RetrievalConfig(dense_k=args.dense_k, keyword_k=args.keyword_k,
                                  top_k=1, reranker_model_dir=args.model_dir)
         load_dotenv(PROJECT_DIR / ".env")
+        directory = args.chroma_dir if args.chroma_dir is not None else chroma_directory()
+        output = args.output or directory.parent / "retrieval_comparison.json"
         embedding = None
         if args.dataset is not None:
             # Dense 评测需要问题向量模型，导出语料只需读取已有 Chunk。
@@ -216,7 +217,7 @@ def main(argv=None):
             if not key:
                 raise ValueError("未配置 DASHSCOPE_API_KEY")
             embedding = TongyiEmbeddings(api_key=key)
-        store = Chroma(collection_name=args.collection, persist_directory=str(args.chroma_dir.resolve()),
+        store = Chroma(collection_name=args.collection, persist_directory=str(directory.resolve()),
                        embedding_function=embedding, create_collection_if_not_exists=False)
         if args.export_corpus is not None:
             # 使用实际数据库 ID 进行标注，论文身份与页码位于 metadata 中。
@@ -231,10 +232,10 @@ def main(argv=None):
             dataset = json.loads(args.dataset.read_text(encoding="utf-8-sig"))
             report = evaluate_retrieval(store, dataset, config=config, at_k=args.at_k,
                                         collection_name=args.collection)
-            write_json(args.output, report)
+            write_json(output, report)
             for mode, cutoffs in report["metrics"].items():
                 print(mode, " | ".join(f"Recall@{k}={value['recall']:.2%}" for k, value in cutoffs.items()))
-            print(f"完整结果：{args.output.resolve()}")
+            print(f"完整结果：{output.resolve()}")
     except Exception as exc:
         print(f"执行失败：{exc}")
         if exc.__cause__ is not None:

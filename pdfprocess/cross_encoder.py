@@ -2,6 +2,7 @@
 
 # 本地模型适配层。问题和候选正文联合编码，原始 logit 交由 retrieval.py 排序与路由。
 
+import os
 from pathlib import Path
 from threading import Lock
 
@@ -12,7 +13,7 @@ MODEL_REPOSITORY = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 # 固定 revision，使本地模型文件版本可复现。量化 ONNX 用于 CPU 推理。
 MODEL_REVISION = "1427fd652930e4ba29e8149678df786c240d8825"
 MODEL_FILE = "onnx/model_quint8_avx2.onnx"
-DEFAULT_MODEL_DIR = Path(__file__).resolve().parent / "data" / "models" / "mmarco-minilm"
+from .paths import MODEL_DIR as DEFAULT_MODEL_DIR
 
 
 class OnnxCrossEncoder:
@@ -25,7 +26,8 @@ class OnnxCrossEncoder:
             raise ValueError("Cross-Encoder 的批量、长度和线程参数需要为整数")
         if batch_size < 1 or not 8 <= max_length <= 512 or cpu_threads < 1:
             raise ValueError("批量、线程数必须为正整数，当前模型 max_length 范围为 8 到 512")
-        self.model_dir = Path(model_dir or DEFAULT_MODEL_DIR)
+        # 显式参数优先；容器通过环境变量把下载权重放入持久化卷。
+        self.model_dir = Path(model_dir or os.getenv("PAPERAGENT_RERANKER_MODEL_DIR") or DEFAULT_MODEL_DIR)
         self.repository = MODEL_REPOSITORY
         self.revision = MODEL_REVISION
         self.batch_size = batch_size

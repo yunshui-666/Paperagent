@@ -9,10 +9,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-if __package__.startswith("pdfprocess."):
-    from ..context_compression import estimate_tokens, message_tokens
-else:
-    from context_compression import estimate_tokens, message_tokens
+from ..context_compression import estimate_tokens, message_tokens
 
 
 # 阈值说明的是本轮检索结果的相关性，因此使用“未检索到足够相关”作为提示。

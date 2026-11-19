@@ -5,10 +5,7 @@
 from langchain_core.tools import BaseTool, StructuredTool
 
 # 相对导入兼容 python -m pdfprocess.rag 及现有脚本入口。
-if __package__.startswith("pdfprocess."):
-    from ..web_search import web_search
-else:
-    from web_search import web_search
+from ..web_search import web_search
 
 from .registry import ToolRegistry
 from .papers import search_papers

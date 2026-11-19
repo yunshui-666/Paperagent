@@ -18,7 +18,7 @@ import pymupdf
 from pdfprocess.embeddings import EMBEDDING_MODEL
 from pdfprocess.ingest_common import PipelineConfig
 from pdfprocess.pdf_pipeline3 import ingest_pdf3
-from pdfprocess.tools.papers import ARXIV_CLIENT
+from pdfprocess.tools.papers import CAMPUS_CLIENT
 from upload_service.app import create_app
 from upload_service.config import ServiceSettings
 from test_pdf_ingestion import local_ocr, vision_client
@@ -66,7 +66,7 @@ class PaperServiceTests(unittest.TestCase):
                 choice = payload.get("tool_choice")
                 forced = choice.get("function", {}).get("name") if isinstance(choice, dict) else None
                 if forced == "download_paper" or (last["role"] == "tool" and last.get("name") == "search_papers" and "下载" in human):
-                    name, args = "download_paper", {"paper_id": "1706.03762"}
+                    name, args = "download_paper", {"paper_id": "https://d.wanfangdata.com.cn/periodical/fixture001"}
                 elif last["role"] != "tool":
                     name, args = "search_papers", {"query": "attention", "max_results": 1}
                 else:
@@ -76,9 +76,9 @@ class PaperServiceTests(unittest.TestCase):
                         "type": "function", "function": {"name": name, "arguments": json.dumps(args)}}]}
                     finish = "tool_calls"
                 else:
-                    message = {"role": "assistant", "content": "论文 1706.03762 的工具结果如上。"}
+                    message = {"role": "assistant", "content": "论文 https://d.wanfangdata.com.cn/periodical/fixture001 的工具结果如上。"}
             elif "你负责压缩历史对话" in system:
-                message = {"role": "assistant", "content": "论文目录包含 1706.03762，用户在比较 attention。"}
+                message = {"role": "assistant", "content": "论文目录包含 https://d.wanfangdata.com.cn/periodical/fixture001，用户在比较 attention。"}
             elif "你只负责检索问题改写" in system:
                 message = {"role": "assistant", "content": "What is the temperature in the downloaded scientific evidence?"}
             else:
@@ -92,8 +92,8 @@ class PaperServiceTests(unittest.TestCase):
         model = ChatDeepSeek(model="deepseek-chat", api_key="fixture", http_client=self.http, max_retries=0)
         patchers = [patch("upload_service.chat.ChatDeepSeek", return_value=model), patch("upload_service.chat.load_dotenv"),
                     patch("upload_service.chat.TongyiEmbeddings", return_value=FixtureEmbedding()),
-                    patch.object(ARXIV_CLIENT, "search", return_value=PAPERS),
-                    patch.object(ARXIV_CLIENT, "open_pdf", side_effect=open_pdf),
+                    patch.object(CAMPUS_CLIENT, "search", return_value=PAPERS),
+                    patch.object(CAMPUS_CLIENT, "open_pdf", side_effect=open_pdf),
                     patch.dict(os.environ, {"DEEPSEEK_API": "fixture", "DASHSCOPE_API_KEY": "fixture"})]
         for patcher in patchers:
             patcher.start()
@@ -153,7 +153,7 @@ class PaperServiceTests(unittest.TestCase):
         self.fail_ingestion = True
         with TestClient(self.app()) as client:
             session = self.session(client)
-            response = self.ask(client, session, "下载 1706.03762 并入库", "download")
+            response = self.ask(client, session, "下载 https://d.wanfangdata.com.cn/periodical/fixture001 并入库", "download")
             self.assertEqual(response.status_code, 200, response.text)
             item = response.json()["metrics"]["paper_downloads"][0]
             self.assertEqual(item["status"], "failed")

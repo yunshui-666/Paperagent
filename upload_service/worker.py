@@ -4,12 +4,13 @@
 
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-import importlib
 import logging
 import multiprocessing
 from threading import Event, Lock, Thread
 
-from pdfprocess.ingest_common import PipelineConfig, ProcessingBusyError
+from pdfprocess.ingest_config import PipelineConfig
+from pdfprocess.ingest_common import ProcessingBusyError
+from pdfprocess.pipelines import get_pipeline
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class ParserPool:
 
 def run_pipeline(task, progress, *, parser_pool):
     """按任务方案号选择同命名入口，恢复配置并传入原文件身份和进度回调。"""
-    module = importlib.import_module(f"pdfprocess.pdf_pipeline{task['scheme']}")
+    module = get_pipeline(task["scheme"])
     # 三套方案保持相同函数命名约定和参数结构，调度器只需读取方案号。
     function = getattr(module, f"ingest_pdf{task['scheme']}")
     return function(

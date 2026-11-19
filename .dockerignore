@@ -1,0 +1,15 @@
+.git
+.idea
+.venv
+.env
+.env.*
+**/__pycache__
+**/*.py[cod]
+**/*.log
+pdfprocess/data
+articels
+experiments
+tests
+docker-data
+outputs
+work

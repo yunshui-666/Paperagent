@@ -1,22 +1,8 @@
-"""文本切块层。先按 Markdown 标题组织，再按字符预算切分，返回携带元数据的 Document 列表。"""
+"""纯文本切块层，按 Markdown 标题与字符长度拆分并附加基础元数据。"""
 
-import collections
-
-from dotenv import load_dotenv
-import  os
-from langchain_text_splitters import (
-    MarkdownHeaderTextSplitter,
-    RecursiveCharacterTextSplitter
-)
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-if __package__:
-    from .embeddings import TongyiEmbeddings
-    from .zipload import zip_markdown
-    from .vector_store import save_chunks
-else:
-    from embeddings import TongyiEmbeddings
-    from zipload import zip_markdown
-    from vector_store import save_chunks
+
 
 def prepare_chunks(
     markdown: str,
@@ -77,46 +63,3 @@ def prepare_chunks(
         })
 
     return chunks
-
-
-def main():
-    """运行历史 ZIP Markdown 示例，打印 Chunk 与元数据，再执行向量化和保存。"""
-    load_dotenv()
-    # 1. 调用你已经写好的 ZIP 解析函数
-    markdown = zip_markdown()
-
-    # 如果你的函数需要 ZIP 路径，
-    # 就改成 zip_markdown(zip_path)
-
-    # 2. 处理 Markdown
-    chunks = prepare_chunks(
-        markdown=markdown,
-        paper_id="paper001",
-        source="langchaimquestion.pdf"
-    )
-
-    # 3. 查看处理结果
-    print("\n========== 切分结果 ==========")
-
-    for i, chunk in enumerate(chunks[:3]):
-        print(f"\n===== Chunk {i} =====")
-        print("文本内容：")
-        print(chunk.page_content[:500])
-        print("\n元数据：")
-        print(chunk.metadata)
-
-    # 4. 提取将来需要 Embedding 的文本
-    texts = [
-        chunk.page_content
-        for chunk in chunks
-    ]
-    print(f"\n待向量化文本数量：{len(texts)},{len(chunks)}")
-    embeddings = TongyiEmbeddings(api_key=os.getenv("DASHSCOPE_API_KEY")).embed_documents(texts)
-    print({len(embeddings)})
-    collections = save_chunks(chunks, embeddings)
-    return collections
-
-
-
-if __name__ == "__main__":
-    chunks = main()

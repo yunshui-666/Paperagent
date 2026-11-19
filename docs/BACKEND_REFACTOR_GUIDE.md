@@ -41,7 +41,8 @@ app.chat
   → ChatService._graph
   → rag.ask
   → prepare_history_node
-  → rewrite_node（可选）
+      ├─ 论文操作 → run_paper_agent → 论文工具循环 → END
+      └─ 普通问答 → rewrite_node（可选）
   → retrieve_node
       ├─ 本地路线 → compress_node → generate_node
       └─ 联网路线 → request_search_node → web_search_node
@@ -55,7 +56,7 @@ app.chat
 
 | 标识 | 来源与用途 |
 | --- | --- |
-| `paper_id` / 文档 ID | PDF 内容 SHA256，用于原文件、解析缓存与向量记录之间的关联 |
+| 解析元数据 `paper_id` / 文档 ID | PDF 内容 SHA256，用于原文件、解析缓存与向量记录关联；论文工具的 paper_id 则是官方详情 URL |
 | 解析指纹 | 配置和依赖版本的散列，区分同一 PDF 的处理方案及参数 |
 | `chunk_id` | 内容身份、方案、指纹和序号组成的稳定 ID，用于向量 upsert 与证据标注 |
 | `task_id` | 一次持久化入库任务的身份 |
@@ -177,7 +178,7 @@ Token 预算使用保守估算，真实模型用量使用 API 返回的 usage。
 
 本次新增的 `tests/test_backend_structure.py` 检查旧导入入口、HTTP 字段、稳定任务键、上传结果结构及旧版 SQLite 状态恢复。原有测试继续覆盖 PDF 入库、候选检索、会话隔离、上下文压缩和原生工具调用协议。
 
-自动测试通过注入模型或 MockTransport 验证工程行为，真实模型效果由论文标注集实验获得。PDF CLI 通过统一管线执行本地 OCR 与通义 VLM，ZIP 示例的样例路径需要按本机文件配置。
+自动测试通过注入模型或 MockTransport 验证工程行为，真实模型效果由论文标注集实验获得。PDF CLI 通过统一管线执行本地 OCR 与通义 VLM。无关练习、旧 ZIP 示例和重复的演示入口已移除。
 
 ## 8. 后端模块职责索引
 
@@ -192,15 +193,16 @@ Token 预算使用保守估算，真实模型用量使用 API 返回的 usage。
 | `pdfprocess/ingest_common.py` | 入库编排层。围绕文件身份、解析缓存、页级 Chunk、向量写入和完成标记组织可重试流程。 |
 | `pdfprocess/paper_chunk.py` | 文本切块层。先按 Markdown 标题组织，再按字符预算切分，返回携带元数据的 Document 列表。 |
 | `pdfprocess/pdf_pipeline1.py` | 方案一入口。页处理器选用本地 Markdown 提取，其余上传、切块、Embedding 和持久化复用公共编排。 |
-| `pdfprocess/pdf_pipeline2.py` | 方案二入口。页处理器选用 OCR 和区域视觉补充，调用参数与方案一、三对齐。 |
-| `pdfprocess/pdf_pipeline3.py` | 方案三入口。按页判断文本质量，在本地提取与 OCR 之间选择，并补充图表内容。 |
+| `pdfprocess/pdf_pipeline2.py` | 方案二入口。纯本地 RapidOCR，调用参数与方案一、三对齐。 |
+| `pdfprocess/pdf_pipeline3.py` | 方案三入口。同一页并行运行本地 OCR 和通义 VLM，按区域与阅读顺序融合。 |
 | `pdfprocess/pdf_vision.py` | 页面内容提取层。负责坐标转换、页面渲染、OCR 布局、区域裁剪及视觉模型结果合并。 |
 | `pdfprocess/pdfload.py` | 统一 PDF 管线 CLI，默认使用本地 OCR + VLM 双路方案，网页上传由 upload_service 组织。 |
 | `pdfprocess/rag.py` | 问答组装入口。build_graph() 注入依赖并连接节点，ask() 为新问题设置临时状态。 |
 | `pdfprocess/rag_nodes.py` | 问答节点层。依赖由建图函数注入，节点通过返回字典提交状态增量。 |
 | `pdfprocess/rag_prompts.py` | 提示词层。模型请求与输入预算使用同一模板，从而一起计入系统文本和消息格式开销。 |
 | `pdfprocess/rag_state.py` | 状态契约层。messages 与摘要跨轮保存，证据、答案和工具调用按当前轮次更新。 |
-| `pdfprocess/retreiver.py` | 本地检索调试 CLI。可指定集合、模式与 TopK，便于人工观察问题和证据排名。 |
+| `pdfprocess/retrieval_cli.py` | 规范的本地检索调试 CLI，支持集合、模式与 TopK。 |
+| `pdfprocess/retreiver.py` | 保留旧拼写的兼容入口，委托 retrieval_cli.main。 |
 | `pdfprocess/retrieval.py` | 检索算法层。统一维护候选 ID 与各阶段分数，提供 Dense、BM25、RRF 和重排组合。 |
 | `pdfprocess/tools/__init__.py` | 工具包公共导出。具体默认工具由 defaults.py 在服务启动时显式登记。 |
 | `pdfprocess/tools/defaults.py` | 工具目录组装。这里选择默认实现，注册表和模型节点通过依赖注入读取目录。 |
@@ -208,7 +210,6 @@ Token 预算使用保守估算，真实模型用量使用 API 返回的 usage。
 | `pdfprocess/tools/search_flow.py` | 模型工具协议层。先验证模型发出的搜索调用，再将带关联 ID 的工具结果交回模型回答。 |
 | `pdfprocess/vector_store.py` | Chroma 写入适配层。校验向量维度和 Chunk ID 后，分批按稳定 ID 执行 upsert。 |
 | `pdfprocess/web_search.py` | 公开网页搜索适配层。固定 RSS 入口返回标题、URL 和文本摘要，下游继续校验及分配证据预算。 |
-| `pdfprocess/zipload.py` | 历史 ZIP Markdown 读取示例。直接在压缩包内选择主 Markdown，供 paper_chunk.py 的样例入口使用。 |
 | `upload_service/__init__.py` | 应用服务包。HTTP 入口见 app.py，业务对象由应用 lifespan 组装并释放。 |
 | `upload_service/app.py` | HTTP 适配层。解析请求、选择响应状态并调用业务对象，业务对象在 lifespan 中集中初始化。 |
 | `upload_service/application_store.py` | 业务数据访问层。在任务存储基础上管理文档生命周期、会话、幂等问答和结果快照。 |
@@ -223,3 +224,11 @@ Token 预算使用保守估算，真实模型用量使用 API 返回的 usage。
 | `upload_service/schemas.py` | HTTP 输入契约。字段默认值与 Pydantic 约束在这里集中定义，业务关系由服务层进一步校验。 |
 | `upload_service/storage.py` | 原始 PDF 存储层。流式保存、哈希标识、PDF 校验和临时文件清理由该模块处理。 |
 | `upload_service/worker.py` | 后台执行层。线程从 SQLite 领取任务，PDF 解析通过 spawn 子进程执行，进度回写业务队列。 |
+
+## 9. 基础项目整理与校园服务（2026-11-19）
+
+路径集中到 `pdfprocess/paths.py`，PDF 配置集中到 `ingest_config.py`，方案分发集中到 `pipelines.py`。旧 `ingest_common.PipelineConfig` 导入继续可用。CLI、网页与容器遵守同一向量目录和重排缓存环境配置。各方案保留同名数字后缀入口，便于实验。
+
+新增模块职责：`tools/wanfang_protocol.py` 处理万方 gRPC-Web/Protobuf；`tools/campus_papers.py` 处理知网/万方搜索与受限 PDF 下载；`tools/papers.py` 提供模型工具及原队列入库；`tools/paper_agent.py` 管理模型工具协议和目录指代。下载失败不会创建入库任务，pending 不会报告为完成。
+
+技术文档统一放在 `docs/`。完整图见 [根 README](../README.md)，[校园论文工具](PAPER_TOOLS_GUIDE.md) 解释来源与权限，[部署指南](DEPLOYMENT_GUIDE.md) 解释 Docker。当前万方元数据可用，真实全文下载仍因后端机构授权不足未通过验收；Docker 配置已准备，当前机器尚无 Docker 运行环境。

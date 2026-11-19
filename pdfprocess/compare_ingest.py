@@ -4,18 +4,22 @@
 
 import argparse
 from dataclasses import asdict
-import importlib
 from pathlib import Path
 from uuid import uuid4
 
-from .ingest_common import PipelineConfig, write_json
+from dotenv import load_dotenv
+
+from .ingest_config import PipelineConfig
+from .ingest_common import write_json
+from .paths import PROJECT_DIR
+from .pipelines import SCHEMES, get_pipeline
 
 
 def main(argv=None):
     """读取 CLI 参数，逐份运行选定解析方案并写出包含结果和耗时的 JSON 报告。"""
     parser = argparse.ArgumentParser(description="比较三套 PDF 解析入库方案")
     parser.add_argument("--pdfs", nargs="+", required=True, help="同一批 PDF 文件路径")
-    parser.add_argument("--schemes", nargs="+", type=int, choices=(1, 2, 3), default=[1])
+    parser.add_argument("--schemes", nargs="+", type=int, choices=SCHEMES, default=[1])
     parser.add_argument("--parse-only", action="store_true", help="仅解析，不调用 Embedding 和 Chroma")
     parser.add_argument("--refresh", action="store_true", help="重新解析，测量实际模型调用及耗时")
     parser.add_argument("--data-root", type=Path)
@@ -34,11 +38,12 @@ def main(argv=None):
         options["ocr_model"] = args.ocr_model
     if args.vlm_model is not None:
         options["vlm_model"] = args.vlm_model
-    config = PipelineConfig(**options)
+    load_dotenv(PROJECT_DIR / ".env")
+    config = PipelineConfig.from_environment(**options)
     results = []
     for scheme in args.schemes:
         # 动态选择同名不同后缀的入口，三套方案接收相同文件和配置结构。
-        module = importlib.import_module(f".pdf_pipeline{scheme}", package=__package__)
+        module = get_pipeline(scheme)
         function = getattr(module, f"ingest_pdf{scheme}")
         if args.parse_only:
             # 解析对比可以单独观察页面产物和 OCR/VLM 用量。

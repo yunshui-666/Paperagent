@@ -1,0 +1,22 @@
+services:
+  paperagent:
+    build: .
+    image: paperagent:local
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      PAPERAGENT_SERVICE_ROOT: /data/service
+      PAPERAGENT_INGEST_ROOT: /data/ingestion
+      PAPERAGENT_CHROMA_DIR: /data/chroma
+      PAPERAGENT_RERANKER_MODEL_DIR: /data/models/mmarco-minilm
+      NO_PROXY: 127.0.0.1,localhost
+    ports:
+      - "${PAPERAGENT_BIND_ADDRESS:-0.0.0.0}:${PAPERAGENT_PORT:-8000}:8000"
+    volumes:
+      - paperagent-data:/data
+    stop_grace_period: 5m
+
+volumes:
+  paperagent-data:

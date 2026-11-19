@@ -12,6 +12,14 @@ from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
+import sys
+
+# 兼容 python pdfprocess/rag.py，同时始终使用同一套包内模块。
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    __package__ = "pdfprocess"
+
+
 import dashscope
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
@@ -23,34 +31,31 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-if __package__:
-    from .embeddings import TongyiEmbeddings
-    from .retrieval import PaperRetriever, RetrievalConfig
-    from .web_search import web_search
-    from .context_compression import CompressionConfig, summary_prompt
-    from .rag_state import RAGState
-    from .rag_prompts import prompt, rewrite_prompt
-    from .rag_nodes import (prepare_history_node, rewrite_node, retrieve_node, web_search_node,
-                            compress_node, generate_node)
-    from .tools.defaults import create_default_registry
-    from .tools.search_flow import create_search_chains, request_search_node
-    from .tools.paper_agent import paper_request_kind, run_paper_agent
-else:
-    from embeddings import TongyiEmbeddings
-    from retrieval import PaperRetriever, RetrievalConfig
-    from web_search import web_search
-    from context_compression import CompressionConfig, summary_prompt
-    from rag_state import RAGState
-    from rag_prompts import prompt, rewrite_prompt
-    from rag_nodes import (prepare_history_node, rewrite_node, retrieve_node, web_search_node,
-                           compress_node, generate_node)
-    from tools.defaults import create_default_registry
-    from tools.search_flow import create_search_chains, request_search_node
-    from tools.paper_agent import paper_request_kind, run_paper_agent
+from .embeddings import TongyiEmbeddings
+from .retrieval import PaperRetriever, RetrievalConfig
+from .web_search import web_search
+from .context_compression import CompressionConfig, summary_prompt
+from .rag_state import RAGState
+from .rag_prompts import prompt, rewrite_prompt
+from .rag_nodes import (prepare_history_node, rewrite_node, retrieve_node, web_search_node,
+                        compress_node, generate_node)
+from .tools.defaults import create_default_registry
+from .tools.search_flow import create_search_chains, request_search_node
+from .tools.paper_agent import paper_request_kind, run_paper_agent
 
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
-CHROMA_DIR = Path(__file__).resolve().parent / "data" / "chroma_db"
+# 继续导出默认目录常量，已有脚本可读取；实际运行优先使用环境配置。
+from .paths import CHROMA_DIR, PROJECT_DIR, chroma_directory
+
+
+def route_request(state):
+    """历史准备后按用户操作意图选择论文工具任务或普通 RAG。"""
+    return "papers" if paper_request_kind(state["question"]) else "rag"
+
+
+def route_evidence(state):
+    """检索节点已经判定证据来源，条件边只读取该结果。"""
+    return state["evidence_origin"]
 
 
 def build_graph(
@@ -88,6 +93,7 @@ def build_graph(
         load_dotenv(PROJECT_DIR / ".env")
 
     if vector_store is None and retriever is None:
+        directory = chroma_directory()
         # 有现成检索器时直接复用。仅默认运行路径创建 Chroma 与 Embedding。
         embedding_function = None
         if retrieval_config.mode != "bm25":
@@ -99,12 +105,12 @@ def build_graph(
         try:
             vector_store = Chroma(
                 collection_name=collection_name,
-                persist_directory=str(CHROMA_DIR),
+                persist_directory=str(directory),
                 embedding_function=embedding_function,
                 create_collection_if_not_exists=False
             )
         except Exception as exc:
-            raise RuntimeError(f"无法加载 Chroma 数据库：{CHROMA_DIR}") from exc
+            raise RuntimeError(f"无法加载 Chroma 数据库：{directory}") from exc
 
     if retriever is None:
         retriever = PaperRetriever(vector_store, retrieval_config, cross_encoder=cross_encoder)
@@ -122,7 +128,7 @@ def build_graph(
             raise ValueError("未配置 DEEPSEEK_API")
         try:
             llm = ChatDeepSeek(
-                model="deepseek-chat",
+                model=os.getenv("PAPERAGENT_CHAT_MODEL", "deepseek-chat"),
                 api_key=deepseek_key,
                 temperature=0,
                 timeout=60,
@@ -179,7 +185,7 @@ def build_graph(
         builder.add_node("paper_agent", partial(run_paper_agent, model=paper_model, registry=registry,
                                                  collection_name=collection_name, compression_config=compression_config))
         builder.add_conditional_edges(route_from,
-            lambda state: "papers" if paper_request_kind(state["question"]) else "rag",
+            route_request,
             {"papers": "paper_agent", "rag": first_node})
         builder.add_edge("paper_agent", END)
     else:
@@ -196,13 +202,13 @@ def build_graph(
                                                         registry=registry, compression_config=compression_config))
             builder.add_edge("request_search", "web_search")
             search_entry = "request_search"
-        builder.add_conditional_edges("retrieve", lambda state: state["evidence_origin"],
+        builder.add_conditional_edges("retrieve", route_evidence,
                                       {"local": answer_entry, "web": search_entry})
         builder.add_edge("web_search", answer_entry)
     else:
         builder.add_edge("retrieve", answer_entry)
     builder.add_edge("generate", END)
-    # 每条路线最终都由 generate 追加完整问答对，再进入 END 形成可恢复的完成状态。
+    # 普通路线由 generate 追加问答，论文路线由 paper_agent 追加，然后分别到 END。
 
     if checkpointer is None:
         # CLI 默认在进程内持久化，服务入口传入官方 SqliteSaver 跨重启保存。

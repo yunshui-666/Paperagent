@@ -17,6 +17,7 @@ import psutil
 from starlette.concurrency import run_in_threadpool
 
 from pdfprocess.ingest_common import processing_lock
+from pdfprocess.paths import DOCS_DIR
 from .config import ServiceSettings
 from .schemas import SessionRequest, ChatRequest, RenameRequest, ReindexRequest
 from .ingestion import IngestionService
@@ -245,7 +246,7 @@ def create_app(settings=None, *, runner=None, graph_factory=None):
     @application.get("/guide", response_class=HTMLResponse, include_in_schema=False)
     def technical_guide():
         """把项目技术说明渲染为 HTML，供本地服务中的文档页面阅读。"""
-        guide = Path(__file__).resolve().parent.parent / "PROJECT_TECHNICAL_GUIDE.md"
+        guide = DOCS_DIR / "PROJECT_TECHNICAL_GUIDE.md"
         if not guide.is_file():
             raise HTTPException(404, "技术文档尚未生成")
         content = MARKDOWN.render(guide.read_text(encoding="utf-8"))

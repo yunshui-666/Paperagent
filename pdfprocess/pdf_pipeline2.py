@@ -1,6 +1,6 @@
 """方案 2：全页本地 OCR。所有入口使用相同参数约定。"""
 
-# 方案二用于本地 OCR 对比，页处理器复用 RapidOCR 引擎与标准入库流程。
+# 方案二用于纯本地 OCR 对比，页处理器复用 RapidOCR 引擎与标准入库流程。
 
 from .ingest_common import (
     ingest_many, parse_document, run_ingestion, upload_many, upload_one

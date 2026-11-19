@@ -26,7 +26,7 @@ class RAGState(TypedDict, total=False):
     turn_id: str | None  # 业务轮次身份，组合为稳定的 human/ai 消息 ID。
     retrieval_query: str  # 问题改写后的独立查询，未改写时使用原问题。
     metrics: dict  # 各阶段耗时、原始模型 usage、路由原因和工具执行记录。
-    evidence_origin: str  # local 或 web，由 retrieve 节点的条件判断确定。
+    evidence_origin: str  # local/web 由检索判定，papers 由论文工具节点输出。
     # 本轮模型产生的工具调用单独保存，完整对话仍只追加成功的用户/答案消息对。
     search_call: AIMessage | None
     paper_catalog: list[dict]  # 最近一次论文检索目录，支持跨轮下载指代，最多十条。
